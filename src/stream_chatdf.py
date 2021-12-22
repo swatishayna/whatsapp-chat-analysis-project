@@ -1,5 +1,14 @@
 import streamlit as st
+from src.utils import readloadchat
+import pandas as pd
+
+
 
 
 def app():
-    st.write("working fine")
+    try:
+        df = readloadchat.readdf()
+        st.dataframe(df)
+    except:
+        st.write("Upload Your Group Chat File")
+

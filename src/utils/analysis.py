@@ -7,70 +7,86 @@ from collections import Counter
 import plotly.express as px
 from collections import Counter
 import matplotlib.pyplot as plt
+import pandas as pd
+
+
+
 
 
 def get_unique_user(df):
-    return df.Author.unique()
+    return pd.DataFrame(df.Author.unique(), columns = ['UniqueUsers']).dropna().reset_index(drop=True)
 
-
-def detailed_analysis(df):
-    media_messages = df[df['Message'] == '<Media omitted>'].shape[0]
-
-    def split_count(text):
+def split_count(text):
         emoji_list = []
         data = regex.findall(r'\X', text)
         for word in data:
-            if any(char in emoji.UNICODE_EMOJI for char in word):
+            if emoji.is_emoji(word):
                 emoji_list.append(word)
+                
 
         return emoji_list
 
+def chatstat(df):
+    media_messages = df[df['Message'] == '<Media omitted>'].shape[0]
+    
+
     df["emoji"] = df["Message"].apply(split_count)
     emojis = sum(df['emoji'].str.len())
-    print(emojis)
+    
     URLPATTERN = r'(https?://\S+)'
     df['urlcount'] = df.Message.apply(lambda x: regex.findall(URLPATTERN, x)).str.len()
-    links = np.sum(df.urlcount)
-    print("Data science Community")
-    print("Messages:",total_messages)
-    print("Media:",media_messages)
-    print("Emojis:",emojis)
-    print("Links:",links)
+    links = int(np.sum(df.urlcount))
+    d = {}
+    total_messages = df.shape[0]
+
+    d["Messages:"] = total_messages
+    d["Media:"] = media_messages
+    d["Emojis:"] = emojis
+    d["Links:"] = links
+    return d,df
 
 
-def user_wise_analysis(df):
+def user_wise_analysis(df,user = None):
+    df = chatstat(df)[1]
     media_messages_df = df[df['Message'] == '<Media omitted>']
     messages_df = df.drop(media_messages_df.index)
-    messages_df.info()
+  
     messages_df['Letter_Count'] = messages_df['Message'].apply(lambda s : len(s))
     messages_df['Word_Count'] = messages_df['Message'].apply(lambda s : len(s.split(' ')))
     messages_df["MessageCount"]=1
-
-    l = get_unique_user(df)
+    
+    l = get_unique_user(df)['UniqueUsers']
+    
+    d = {}
+    user_chatanalysis_df = pd.DataFrame()
     for i in range(len(l)):
     # Filtering out messages of particular user
         req_df= messages_df[messages_df["Author"] == l[i]]
-        # req_df will contain messages of only one particular user
-        print(f'Stats of {l[i]} -')
-        # shape will print number of rows which indirectly means the number of messages
-        print('Messages Sent', req_df.shape[0])
+        # username
+        d['user'] = l[i]
+        # number of messages sent by user, number of rows will tell
+        d['Messages_Sent'] =  req_df.shape[0]
         #Word_Count contains of total words in one message. Sum of all words/ Total Messages will yield words per message
-        words_per_message = (np.sum(req_df['Word_Count']))/req_df.shape[0]
-        print('Words per message', words_per_message)
+        d['words_per_message'] = (np.sum(req_df['Word_Count']))/req_df.shape[0]
         #media conists of media messages
         media = media_messages_df[media_messages_df['Author'] == l[i]].shape[0]
-        print('Media Messages Sent', media)
+        d['MediaMessagesSent'] = media
         # emojis conists of total emojis
         emojis = sum(req_df['emoji'].str.len())
-        print('Emojis Sent', emojis)
+        d['Emojis Sent'] = emojis
         #links consist of total links
         links = sum(req_df["urlcount"])   
-        print('Links Sent', links)   
-        print()
+        d['Links Sent'] =  links   
+        user_chatanalysis_df = user_chatanalysis_df.append(d, ignore_index=True)
+    if user is None:
+        return user_chatanalysis_df
+    else:
+        return user_chatanalysis_df[user_chatanalysis_df['user']==user]
 
 
 
 def emoji_analysis(messages_df):
+    
     total_emojis_list = list([a for b in messages_df.emoji for a in b])
     emoji_dict = dict(Counter(total_emojis_list))
     emoji_dict = sorted(emoji_dict.items(), key=lambda x: x[1], reverse=True)

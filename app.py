@@ -1,50 +1,26 @@
-import pandas as pd
-import numpy as np
-import emoji
-import plotly.express as px
-from collections import Counter
-import matplotlib.pyplot as plt
-from os import path
-from PIL import Image
-from wordcloud import WordCloud, STOPWORDS, ImageColorGenerator
-from src.utils import readloadchat
+import streamlit as st
 
+# Custom imports
+from src.multipage import MultiPage
+from src import stream_analysis,stream_chatdf,stream_upload_data
 
-data = [] # List to keep track of data so it can be used by a Pandas dataframe
-conversation = readloadchat.get_whatsapp_txt_file()
+try:
+    # Create an instance of the app
 
-with open(conversation, encoding="utf-8") as fp:
-    fp.readline() # Skipping first line of the file because contains information related to something about end-to-end encryption
-    messageBuffer = [] 
-    parsedData = []
-    date, time, author = None, None, None
-    while True:
-        line = fp.readline() 
-        
-        if not line: 
-            break
-        line = line.strip() 
-        print("***************",line)
-        if readloadchat.startsWithDateAndTime(line): 
-            
-            if len(messageBuffer) > 0: 
-                parsedData.append([date, time, author, ' '.join(messageBuffer)]) 
-            messageBuffer.clear() 
-            date, time, author, message = readloadchat.getDataPoint(line) 
-            messageBuffer.append(message) 
-        else:
-            messageBuffer.append(line)
+    apps = MultiPage()
 
-
-df = pd.DataFrame(parsedData, columns=['Date', 'Time', 'Author', 'Message']) # Initialising a pandas Dataframe.
-df = readloadchat.clean_date_col(df)
-df["Date"] = pd.to_datetime(df["Date"])
+    # Add all your applications (pages) here
+    apps.add_page("Upload Chat File", stream_upload_data.app)
+    apps.add_page("View Chat",    stream_chatdf.app)
+    apps.add_page("Analysis", stream_analysis.app)
+    
+except:
+    pass
 
 
 
 
 
 
-
-
-readloadchat.delete_whatsapptxtfile()
+if __name__ == "__main__":
+    apps.run()
